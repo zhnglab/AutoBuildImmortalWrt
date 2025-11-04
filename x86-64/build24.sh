@@ -89,6 +89,19 @@ else
     echo "⚪️ 未选择 luci-app-openclash"
 fi
 
+
+# ===== 自定义版本号信息 =====
+CUSTOM_VERSION="ImmortalWrt Mr.Zhang Edition $(date +%Y.%m.%d)"
+mkdir -p /home/build/immortalwrt/files/etc
+cat > /home/build/immortalwrt/files/etc/openwrt_release <<EOF
+DISTRIB_ID='ImmortalWrt'
+DISTRIB_RELEASE='${CUSTOM_VERSION}'
+DISTRIB_REVISION='r99999'
+DISTRIB_TARGET='x86/64'
+DISTRIB_DESCRIPTION='${CUSTOM_VERSION}'
+DISTRIB_TAINTS=''
+EOF
+
 # 构建镜像
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Building image with the following packages:"
 echo "$PACKAGES"
@@ -99,5 +112,3 @@ if [ $? -ne 0 ]; then
     echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Build failed!"
     exit 1
 fi
-
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Build completed successfully."
