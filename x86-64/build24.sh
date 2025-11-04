@@ -136,6 +136,16 @@ cat > /home/build/immortalwrt/files/usr/lib/lua/luci/view/themes/default/footer.
 </footer>
 EOF
 
+# 4️⃣ LuCI 概览页固件版本（修改 luci/version.lua）
+cat > /home/build/immortalwrt/files/usr/lib/lua/luci/version.lua <<EOF
+local version = {}
+version.distname = "ImmortalWrt"
+version.distversion = "${CUSTOM_VERSION}"
+version.luciname = "LuCI"
+version.luciversion = "git-24.11 by ${CUSTOM_AUTHOR}"
+return version
+EOF
+
 # 输出结果
 echo "✅ 自定义信息写入完成："
 echo "  SSH 登录显示：🧩 ImmortalWrt Custom Build by Mr.Zhang"
