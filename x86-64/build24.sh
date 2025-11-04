@@ -112,7 +112,7 @@ EOF
 cat > /home/build/immortalwrt/files/usr/lib/lua/luci/view/themes/default/footer.htm <<EOF
 <footer class="footer">
   <div class="container text-center" style="padding:10px 0;">
-    ${CUSTOM_VERSION} | Powered by <a href="https://immortalwrt.org/" target="_blank">ImmortalWrt</a>
+    ${CUSTOM_VERSION} | Powered by <a href="https://immortalwrt.org/" target="_blank">ImmortalWrt</a> | Customized by ${CUSTOM_AUTHOR}
   </div>
 </footer>
 EOF
@@ -122,6 +122,7 @@ echo "✅ 自定义信息写入完成："
 echo " SSH 登录显示：🧩 ImmortalWrt Custom Build by Mr.Zhang"
 echo " LuCI 底部版权：${CUSTOM_VERSION} | Customized by ${CUSTOM_AUTHOR}"
 echo "====================================================="
+
 
 # 构建镜像
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Building image with the following packages:"
