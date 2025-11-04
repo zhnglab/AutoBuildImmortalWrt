@@ -89,27 +89,22 @@ else
     echo "⚪️ 未选择 luci-app-openclash"
 fi
 
+#!/bin/sh
 # ================== 🧩 自定义固件信息 by Mr.Zhang ==================
 echo "🧩 正在写入自定义版本与界面信息..."
 
 # 动态定义版本号（只到月份）
-CUSTOM_DATE=$(date +%Y.%m)
-CUSTOM_VERSION="ImmortalWrt Mr.Zhang Edition ${CUSTOM_DATE}"
-CUSTOM_AUTHOR="Mr.Zhang"
+CUSTOM_DATE=$(date +%d.%m.%Y)  # 获取当前日期
+CUSTOM_VERSION="ImmortalWrt 24.10.3 r33451-5531f6bc76a3 by Mr.Zhang"  # 自定义固件版本信息
+CUSTOM_LUCI_VERSION="LuCI openwrt-24.10 branch 25.267.23331~f2e50e2"  # 自定义 LuCI 版本信息
+CUSTOM_AUTHOR="Mr.Zhang"  # 作者名称
 
 # 创建必要目录
 mkdir -p files/etc
 mkdir -p files/usr/lib/lua/luci/view/themes/default
 mkdir -p files/www/luci-static/resources/view/status
 
-# 1️⃣ SSH 登录界面信息
-cat > files/etc/banner <<'EOF'
------------------------------------------------------
-   🧩 ImmortalWrt Custom Build by Mr.Zhang
------------------------------------------------------
-EOF
-
-# 2️⃣ LuCI 概览页 固件版本显示（修改 openwrt_release + os-release）
+# 1️⃣ 修改 openwrt_release 文件
 cat > files/etc/openwrt_release <<EOF
 DISTRIB_ID='ImmortalWrt'
 DISTRIB_RELEASE='${CUSTOM_VERSION}'
@@ -119,6 +114,7 @@ DISTRIB_DESCRIPTION='${CUSTOM_VERSION}'
 DISTRIB_TAINTS=''
 EOF
 
+# 2️⃣ 修改 os-release 文件
 cat > files/etc/os-release <<EOF
 NAME="ImmortalWrt"
 VERSION="${CUSTOM_VERSION}"
@@ -128,7 +124,29 @@ BUILD_ID="r99999"
 OPENWRT_RELEASE="${CUSTOM_VERSION}"
 EOF
 
-# 3️⃣ LuCI 网页底部版权信息
+# 3️⃣ 修改 version.lua 文件 (用于 LuCI)
+cat > files/usr/lib/lua/luci/version.lua <<EOF
+local version = {}
+version.distname = "ImmortalWrt"
+version.distversion = "${CUSTOM_VERSION}"
+version.luciname = "LuCI"
+version.luciversion = "${CUSTOM_LUCI_VERSION}"
+return version
+EOF
+
+# 4️⃣ 修改 index.js 文件 (用于 LuCI 前端显示)
+cat > files/www/luci-static/resources/view/status/index.js <<'EOF'
+define([], function() {
+    return {
+        title: 'System Overview',
+        version: 'ImmortalWrt 24.10.3 r33451-5531f6bc76a3 by Mr.Zhang',  # 固定版本信息
+        luci_version: 'LuCI openwrt-24.10 branch 25.267.23331~f2e50e2',  # 固定 LuCI 版本信息
+        author: 'Mr.Zhang'
+    };
+});
+EOF
+
+# 5️⃣ 修改 LuCI 网页底部版权信息
 cat > files/usr/lib/lua/luci/view/themes/default/footer.htm <<EOF
 <footer class="footer">
   <div class="container text-center" style="padding:10px 0;">
@@ -137,44 +155,12 @@ cat > files/usr/lib/lua/luci/view/themes/default/footer.htm <<EOF
 </footer>
 EOF
 
-# 4️⃣ LuCI 概览页固件版本（修改 luci/version.lua）
-cat > files/usr/lib/lua/luci/version.lua <<EOF
-local version = {}
-version.distname = "ImmortalWrt"
-version.distversion = "${CUSTOM_VERSION}"
-version.luciname = "LuCI"
-version.luciversion = "git-24.11 by ${CUSTOM_AUTHOR}"
-return version
-EOF
-
-# 5️⃣ LuCI 概览页前端显示自定义版本信息（修改 index.js）
-cat > files/www/luci-static/resources/view/status/index.js <<'EOF'
-define([], function() {
-    return {
-        title: 'System Overview',
-        version: 'ImmortalWrt Mr.Zhang Edition 2025.11',  // 手动填入当前版本号，或使用动态变量
-        author: 'Mr.Zhang'
-    };
-});
-EOF
-
-# 6️⃣ 处理 LuCI 其它状态页面，如 load.js、bandwidth.js 等，类似操作，确保版本号显示在这些页面
-#    这一步是可选的，如果需要可以进行类似的修改
-
-# 7️⃣ 输出结果
+# 输出结果
 echo "✅ 自定义信息写入完成："
-echo "  SSH 登录显示：🧩 ImmortalWrt Custom Build by Mr.Zhang"
-echo "  概览页固件版本：${CUSTOM_VERSION}"
-echo "  LuCI 底部版权：${CUSTOM_VERSION} | Customized by ${CUSTOM_AUTHOR}"
+echo "  固件版本信息：${CUSTOM_VERSION}"
+echo "  LuCI 版本信息：${CUSTOM_LUCI_VERSION}"
+echo "  网页底部版权：${CUSTOM_VERSION} | Customized by ${CUSTOM_AUTHOR}"
 echo "====================================================="
-
-# 8️⃣ 清理 LuCI 静态缓存（避免浏览器缓存旧版本）
-rm -rf files/www/luci-static/*
-
-# 9️⃣ 强制刷新配置
-/etc/init.d/uhttpd restart
-
-
 
 
 # 构建镜像
