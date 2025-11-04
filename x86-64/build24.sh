@@ -90,9 +90,18 @@ else
 fi
 
 
-# ===== 自定义版本号信息 =====
-CUSTOM_VERSION="ImmortalWrt Mr.Zhang Edition $(date +%Y.%m.%d)"
+# ================== 🧩 自定义固件信息 by Mr.Zhang ==================
+echo "🧩 正在写入自定义版本与界面信息..."
+
+# 动态定义版本号
+CUSTOM_VERSION="ImmortalWrt Mr.Zhang Edition ${luci_version}-$(date +%Y.%m.%d)"
+CUSTOM_AUTHOR="Mr.Zhang"
+
+# 创建必要目录
 mkdir -p /home/build/immortalwrt/files/etc
+mkdir -p /home/build/immortalwrt/files/usr/lib/lua/luci/view/themes/
+
+# 1️⃣ 写入系统版本号（LuCI 概览页显示）
 cat > /home/build/immortalwrt/files/etc/openwrt_release <<EOF
 DISTRIB_ID='ImmortalWrt'
 DISTRIB_RELEASE='${CUSTOM_VERSION}'
@@ -101,6 +110,44 @@ DISTRIB_TARGET='x86/64'
 DISTRIB_DESCRIPTION='${CUSTOM_VERSION}'
 DISTRIB_TAINTS=''
 EOF
+
+# 2️⃣ 写入 SSH 登录横幅
+cat > /home/build/immortalwrt/files/etc/banner <<'EOF'
+-----------------------------------------------------
+   🧩 ImmortalWrt Custom Build by Mr.Zhang
+-----------------------------------------------------
+EOF
+
+# 3️⃣ 自动修改 LuCI 网页底部版权信息
+# 支持所有主题，如 argon、bootstrap 等
+for theme_dir in /home/build/immortalwrt/files/usr/lib/lua/luci/view/themes/*; do
+    [ -d "$theme_dir" ] || continue
+    cat > "$theme_dir/footer.htm" <<EOF
+<footer class="footer">
+  <div class="container text-center">
+    ${CUSTOM_VERSION} | Powered by <a href="https://github.com/immortalwrt/immortalwrt" target="_blank">ImmortalWrt</a> | Customized by ${CUSTOM_AUTHOR}
+  </div>
+</footer>
+EOF
+done
+
+# 若未检测到主题目录（例如首次构建）
+mkdir -p /home/build/immortalwrt/files/usr/lib/lua/luci/view/themes/default
+cat > /home/build/immortalwrt/files/usr/lib/lua/luci/view/themes/default/footer.htm <<EOF
+<footer class="footer">
+  <div class="container text-center">
+    ${CUSTOM_VERSION} | Powered by <a href="https://github.com/immortalwrt/immortalwrt" target="_blank">ImmortalWrt</a> | Customized by ${CUSTOM_AUTHOR}
+  </div>
+</footer>
+EOF
+
+# 输出结果
+echo "✅ 自定义信息写入完成："
+echo "  SSH 欢迎信息：ImmortalWrt Custom Build by Mr.Zhang"
+echo "  概览显示版本号：${CUSTOM_VERSION}"
+echo "  LuCI 底部版权：${CUSTOM_VERSION} | Customized by ${CUSTOM_AUTHOR}"
+echo "====================================================="
+
 
 # 构建镜像
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Building image with the following packages:"
