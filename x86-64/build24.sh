@@ -89,6 +89,8 @@ else
     echo "⚪️ 未选择 luci-app-openclash"
 fi
 
+#!/bin/bash
+
 # ================== 🧩 自定义固件信息 by Mr.Zhang ================== 
 echo "🧩 正在写入自定义版本与界面信息..."
 
@@ -97,19 +99,20 @@ CUSTOM_DATE=$(date +%Y.%m)
 CUSTOM_VERSION="ImmortalWrt Mr.Zhang Edition ${CUSTOM_DATE}"
 CUSTOM_AUTHOR="Mr.Zhang"
 
-# 创建必要目录
+# 创建必要的目录
 mkdir -p /home/build/immortalwrt/files/etc
-mkdir -p /home/build/immortalwrt/files/usr/lib/lua/luci/view/themes/default
+mkdir -p /home/build/immortalwrt/files/usr/lib/lua/luci/view/themes/argon
+mkdir -p /home/build/immortalwrt/files/www/luci-static/resources/view/status
 
-# 1️⃣ SSH 登录界面信息
+# 1️⃣ 修改 SSH 登录界面信息
 cat > /home/build/immortalwrt/files/etc/banner <<'EOF'
 -----------------------------------------------------
 🧩 ImmortalWrt Custom Build by Mr.Zhang
 -----------------------------------------------------
 EOF
 
-# 2️⃣ LuCI 网页底部版权信息
-cat > /home/build/immortalwrt/files/usr/lib/lua/luci/view/themes/default/footer.htm <<EOF
+# 2️⃣ 修改 LuCI 网页底部版权信息
+cat > /home/build/immortalwrt/files/usr/lib/lua/luci/view/themes/argon/footer.htm <<EOF
 <footer class="footer">
   <div class="container text-center" style="padding:10px 0;">
     ${CUSTOM_VERSION} | Powered by <a href="https://immortalwrt.org/" target="_blank">ImmortalWrt</a> | Customized by ${CUSTOM_AUTHOR}
@@ -117,10 +120,20 @@ cat > /home/build/immortalwrt/files/usr/lib/lua/luci/view/themes/default/footer.
 </footer>
 EOF
 
+# 3️⃣ 修改状态概览页面中的固件版本信息
+mkdir -p /home/build/immortalwrt/files/www/luci-static/resources/view/status
+cat > /home/build/immortalwrt/files/www/luci-static/resources/view/status/index.htm <<EOF
+<!-- Customizing the firmware version display -->
+<script type="text/javascript">
+  document.getElementById("distversion").innerHTML = "${CUSTOM_VERSION}";
+</script>
+EOF
+
 # 输出结果
 echo "✅ 自定义信息写入完成："
 echo " SSH 登录显示：🧩 ImmortalWrt Custom Build by Mr.Zhang"
 echo " LuCI 底部版权：${CUSTOM_VERSION} | Customized by ${CUSTOM_AUTHOR}"
+echo " 状态概览固件版本：${CUSTOM_VERSION}"
 echo "====================================================="
 
 
