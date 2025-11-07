@@ -1,0 +1,15 @@
+#!/bin/sh
+# ================== 🧩 自定义固件信息 by Mr.Zhang ==================
+echo "🧩 正在写入自定义版本信息..."
+
+# 固件版本号
+CUSTOM_VERSION="Mz.Wrt 24.10.3 $(date +%d.%m.%Y) by Mr.Zhang"
+
+# 修改 /etc/openwrt_release
+sed -i "s/^DISTRIB_DESCRIPTION=.*/DISTRIB_DESCRIPTION='${CUSTOM_VERSION} \/ LuCI openwrt-24.10 branch'/g" /etc/openwrt_release
+
+# 同步更新到 /etc/banner（SSH 登录时显示）
+sed -i "1i\\
+${CUSTOM_VERSION}\\
+------------------------------------\\
+" /etc/banner
