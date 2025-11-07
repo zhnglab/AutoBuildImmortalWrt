@@ -45,3 +45,20 @@ uci set system.@system[0].timezone='CST-8'
 uci commit system
 
 echo "✅ 自定义设置完成：主机名、主题、版本信息、时区。"
+
+
+# ================== 修复 LuCI 固件版本显示 ==================
+CUSTOM_DATE=$(date +%d.%m.%Y)
+CUSTOM_VERSION="${CUSTOM_DATE} by Mr.Zhang"
+
+# 写入启动后执行的任务（确保开机后再修改版本文件）
+RCLOCAL="/etc/rc.local"
+grep -q "Mz.Wrt" "$RCLOCAL" 2>/dev/null || cat >> "$RCLOCAL" <<EOF
+
+# 自定义版本号显示修复
+if [ -f /etc/openwrt_release ]; then
+    sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='${CUSTOM_VERSION} \/ LuCI openwrt-24.10 branch'/g" /etc/openwrt_release
+fi
+exit 0
+EOF
+
