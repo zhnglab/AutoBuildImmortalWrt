@@ -1,15 +1,47 @@
 #!/bin/sh
 # ================== 🧩 自定义固件信息 by Mr.Zhang ==================
-echo "🧩 正在写入自定义版本信息..."
+echo "🧩 正在写入自定义版本、主机名与界面主题..."
 
-# 固件版本号
-CUSTOM_VERSION="Mz.Wrt 24.10.3 $(date +%d.%m.%Y) by Mr.Zhang"
+# 1️⃣ 动态定义版本号（包含构建日期）
+CUSTOM_DATE=$(date +%d.%m.%Y)
+CUSTOM_VERSION="Mz.Wrt 24.10.3 ${CUSTOM_DATE} by Mr.Zhang"
 
-# 修改 /etc/openwrt_release
-sed -i "s/^DISTRIB_DESCRIPTION=.*/DISTRIB_DESCRIPTION='${CUSTOM_VERSION} \/ LuCI openwrt-24.10 branch'/g" /etc/openwrt_release
+# 2️⃣ 修改 /etc/openwrt_release（LuCI 概览页用）
+FILE_PATH="/etc/openwrt_release"
+if [ -f "$FILE_PATH" ]; then
+    sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='${CUSTOM_VERSION} \/ LuCI openwrt-24.10 branch'/g" "$FILE_PATH"
+else
+    echo "DISTRIB_DESCRIPTION='${CUSTOM_VERSION} / LuCI openwrt-24.10 branch'" >> "$FILE_PATH"
+fi
 
-# 同步更新到 /etc/banner（SSH 登录时显示）
-sed -i "1i\\
+# 3️⃣ 修改 SSH 登录页 banner
+BANNER_FILE="/etc/banner"
+if [ -f "$BANNER_FILE" ]; then
+    # 插入在最顶部
+    sed -i "1i\\
 ${CUSTOM_VERSION}\\
 ------------------------------------\\
-" /etc/banner
+" "$BANNER_FILE"
+else
+    echo "${CUSTOM_VERSION}" > "$BANNER_FILE"
+    echo "------------------------------------" >> "$BANNER_FILE"
+fi
+
+# 4️⃣ 修改主机名（LuCI 顶部和系统信息显示）
+uci set system.@system[0].hostname='Mz.WRT'
+uci commit system
+
+# 5️⃣ 修改默认主题为 Argon（如果安装了 luci-theme-argon）
+if uci show luci 2>/dev/null | grep -q 'theme'; then
+    uci set luci.main.mediaurlbase='/luci-static/argon'
+    uci commit luci
+else
+    echo "⚠️ 未检测到 luci-theme-argon，请确保构建时包含此包。"
+fi
+
+# 6️⃣ 可选：设置时区为中国（Asia/Shanghai）
+uci set system.@system[0].zonename='Asia/Shanghai'
+uci set system.@system[0].timezone='CST-8'
+uci commit system
+
+echo "✅ 自定义设置完成：主机名、主题、版本信息、时区。"
