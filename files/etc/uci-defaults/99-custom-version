@@ -1,64 +1,54 @@
 #!/bin/sh
-# ================== 🧩 自定义固件信息 by Mr.Zhang ==================
-echo "🧩 正在写入自定义版本、主机名与界面主题..."
+# ================== 🧩 自定义固件信息脚本 ==================
+# 作用：
+# 1️⃣ LuCI 概览页显示自定义版本信息
+# 2️⃣ SSH 登录欢迎信息中显示自定义版本
+# 3️⃣ 系统文件 /etc/openwrt_release 和 /etc/os-release 保持一致
+# ============================================================
 
-# 1️⃣ 动态定义版本号（包含构建日期）
-CUSTOM_DATE=$(date +%d.%m.%Y)
-CUSTOM_VERSION="Mz.Wrt 24.10.3 ${CUSTOM_DATE} by Mr.Zhang"
+CUSTOM_DATE=$(date +%Y.%m.%d)
+CUSTOM_VERSION="Mz.Wrt 24.10.3 (${CUSTOM_DATE}) by Mr.Zhang"
+LUCIBRANCH="LuCI openwrt-24.10 branch"
 
-# 2️⃣ 修改 /etc/openwrt_release（LuCI 概览页用）
-FILE_PATH="/etc/openwrt_release"
-if [ -f "$FILE_PATH" ]; then
-    sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='${CUSTOM_VERSION} \/ LuCI openwrt-24.10 branch'/g" "$FILE_PATH"
+echo "🧩 正在写入自定义版本与系统信息..."
+
+# --- 修改 openwrt_release ---
+if [ -f /etc/openwrt_release ]; then
+    sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='${CUSTOM_VERSION} \/ ${LUCIBRANCH}'/" /etc/openwrt_release
 else
-    echo "DISTRIB_DESCRIPTION='${CUSTOM_VERSION} / LuCI openwrt-24.10 branch'" >> "$FILE_PATH"
+    cat > /etc/openwrt_release <<EOF
+DISTRIB_ID='OpenWrt'
+DISTRIB_RELEASE='24.10.3'
+DISTRIB_REVISION='Mz.Wrt'
+DISTRIB_TARGET='custom/auto'
+DISTRIB_DESCRIPTION='${CUSTOM_VERSION} \/ ${LUCIBRANCH}'
+DISTRIB_TAINTS=''
+EOF
 fi
 
-# 3️⃣ 修改 SSH 登录页 banner
+# --- 修改 os-release ---
+if [ -f /etc/os-release ]; then
+    sed -i "s/^PRETTY_NAME=.*/PRETTY_NAME='${CUSTOM_VERSION}'/" /etc/os-release
+    sed -i "s/^OPENWRT_RELEASE=.*/OPENWRT_RELEASE='${CUSTOM_VERSION}'/" /etc/os-release 2>/dev/null || true
+else
+    cat > /etc/os-release <<EOF
+NAME="OpenWrt"
+ID="openwrt"
+PRETTY_NAME="${CUSTOM_VERSION}"
+OPENWRT_RELEASE="${CUSTOM_VERSION}"
+EOF
+fi
+
+# --- SSH 登录欢迎语 ---
 BANNER_FILE="/etc/banner"
 if [ -f "$BANNER_FILE" ]; then
-    # 插入在最顶部
-    sed -i "1i\\
-${CUSTOM_VERSION}\\
-------------------------------------\\
-" "$BANNER_FILE"
-else
-    echo "${CUSTOM_VERSION}" > "$BANNER_FILE"
-    echo "------------------------------------" >> "$BANNER_FILE"
+    echo "" >> "$BANNER_FILE"
+    echo "============================================" >> "$BANNER_FILE"
+    echo " 🧩 ${CUSTOM_VERSION}" >> "$BANNER_FILE"
+    echo " 💡 ${LUCIBRANCH}" >> "$BANNER_FILE"
+    echo "============================================" >> "$BANNER_FILE"
 fi
 
-# 4️⃣ 修改主机名（LuCI 顶部和系统信息显示）
-uci set system.@system[0].hostname='Mz.WRT'
-uci commit system
-
-# 5️⃣ 修改默认主题为 Argon（如果安装了 luci-theme-argon）
-if uci show luci 2>/dev/null | grep -q 'theme'; then
-    uci set luci.main.mediaurlbase='/luci-static/argon'
-    uci commit luci
-else
-    echo "⚠️ 未检测到 luci-theme-argon，请确保构建时包含此包。"
-fi
-
-# 6️⃣ 可选：设置时区为中国（Asia/Shanghai）
-uci set system.@system[0].zonename='Asia/Shanghai'
-uci set system.@system[0].timezone='CST-8'
-uci commit system
-
-echo "✅ 自定义设置完成：主机名、主题、版本信息、时区。"
-
-
-# ================== 修复 LuCI 固件版本显示 ==================
-CUSTOM_DATE=$(date +%d.%m.%Y)
-CUSTOM_VERSION="${CUSTOM_DATE} by Mr.Zhang"
-
-# 写入启动后执行的任务（确保开机后再修改版本文件）
-RCLOCAL="/etc/rc.local"
-grep -q "Mz.Wrt" "$RCLOCAL" 2>/dev/null || cat >> "$RCLOCAL" <<EOF
-
-# 自定义版本号显示修复
-if [ -f /etc/openwrt_release ]; then
-    sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='${CUSTOM_VERSION} \/ LuCI openwrt-24.10 branch'/g" /etc/openwrt_release
-fi
+# --- 防止重复执行 ---
+rm -f /etc/uci-defaults/99-custom.sh
 exit 0
-EOF
-
