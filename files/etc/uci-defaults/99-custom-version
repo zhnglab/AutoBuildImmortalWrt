@@ -1,72 +1,39 @@
 #!/bin/sh
-# ================== 🧩 ImmortalWrt 固件自定义信息 ==================
+# ================== 🧩 自定义主机名与SSH欢迎语 ==================
 # 作者：Mr.Zhang
 # 功能：
-# 1️⃣ 修改 LuCI 概览页固件版本
-# 2️⃣ 修改系统主机名
-# 3️⃣ 修改 SSH 登录页欢迎语
-# 4️⃣ 同步 /etc/openwrt_release 与 /etc/os-release
+# 1️⃣ 设置主机名 Mz.WRT（系统与LuCI同步）
+# 2️⃣ SSH 登录页显示动态版本号与构建日期（到月）
 # ============================================================
 
-CUSTOM_DATE=$(date +%Y.%m.%d)
-CUSTOM_VERSION="Mz.Wrt 24.10.3 (${CUSTOM_DATE}) by Mr.Zhang"
-CUSTOM_HOSTNAME="MzWrt-Router"
-LUCIBRANCH="LuCI openwrt-24.10 branch"
+CUSTOM_HOSTNAME="Mz.WRT"
+BUILD_DATE=$(date +%Y.%m)
 
-echo "🧩 正在写入自定义系统信息..."
+echo "🧩 正在设置主机名与SSH欢迎语..."
 
 # ------------------ 主机名 ------------------
 uci set system.@system[0].hostname="${CUSTOM_HOSTNAME}"
 uci commit system
 echo "${CUSTOM_HOSTNAME}" > /proc/sys/kernel/hostname
 
-# ------------------ openwrt_release ------------------
+# ------------------ 动态获取系统版本 ------------------
 if [ -f /etc/openwrt_release ]; then
-    sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='${CUSTOM_VERSION} \/ ${LUCIBRANCH}'/" /etc/openwrt_release
+    . /etc/openwrt_release
+    FW_VERSION=${DISTRIB_DESCRIPTION:-"ImmortalWrt"}
 else
-    cat > /etc/openwrt_release <<EOF
-DISTRIB_ID='ImmortalWrt'
-DISTRIB_RELEASE='24.10.3'
-DISTRIB_REVISION='Mz.Wrt'
-DISTRIB_TARGET='custom/auto'
-DISTRIB_DESCRIPTION='${CUSTOM_VERSION} \/ ${LUCIBRANCH}'
-DISTRIB_TAINTS=''
-EOF
-fi
-
-# ------------------ os-release ------------------
-if [ -f /etc/os-release ]; then
-    sed -i "s/^PRETTY_NAME=.*/PRETTY_NAME=\"${CUSTOM_VERSION}\"/" /etc/os-release
-else
-    cat > /etc/os-release <<EOF
-NAME="ImmortalWrt"
-ID="immortalwrt"
-PRETTY_NAME="${CUSTOM_VERSION}"
-EOF
-fi
-
-# ------------------ LuCI 显示修复 ------------------
-# 强制重写 LuCI 的系统信息缓存，防止仍显示旧版本
-[ -d /usr/lib/lua/luci/version.lua ] && rm -f /usr/lib/lua/luci/version.lua
-if [ -f /usr/lib/lua/luci/version.lua ]; then
-    sed -i "s/'LuCI .*'/'${CUSTOM_VERSION}'/" /usr/lib/lua/luci/version.lua 2>/dev/null
+    FW_VERSION="ImmortalWrt"
 fi
 
 # ------------------ SSH 欢迎语 ------------------
 BANNER_FILE="/etc/banner"
-if [ -f "$BANNER_FILE" ]; then
-    cat >> "$BANNER_FILE" <<EOF
-
-============================================
- 🧩 ${CUSTOM_VERSION}
- 💡 ${LUCIBRANCH}
- 🖥️  Hostname: ${CUSTOM_HOSTNAME}
-============================================
-EOF
-fi
-
-# ------------------ 标识文件 ------------------
-echo "${CUSTOM_VERSION}" > /etc/mz.version
+{
+    echo ""
+    echo "============================================"
+    echo " 🧩 ${FW_VERSION}  by Mr.Zhang"
+    echo " 🖥️  Hostname: ${CUSTOM_HOSTNAME}"
+    echo " 📅 Build Date: ${BUILD_DATE}"
+    echo "============================================"
+} >> "$BANNER_FILE"
 
 # ------------------ 清理 ------------------
 rm -f /etc/uci-defaults/99-custom.sh
