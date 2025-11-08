@@ -1,75 +1,64 @@
 #!/bin/sh
-# ================== 🧩 ImmortalWrt 固件自定义信息 ==================
-# 作者：Mr.Zhang
-# 功能：
-# 1️⃣ 修改 LuCI 概览页固件版本
-# 2️⃣ 修改系统主机名
-# 3️⃣ 修改 SSH 登录页欢迎语
-# 4️⃣ 同步 /etc/openwrt_release 与 /etc/os-release
+# ============================================================
+# 🧩 ImmortalWrt 固件自定义信息脚本
+# 作者: Mr.Zhang
+# 功能:
+#  1️⃣ 设置主机名为 Mz.WRT
+#  2️⃣ LuCI 固件版本显示自定义内容
+#  3️⃣ SSH 欢迎语中显示版本信息与构建日期（到月）
+#  4️⃣ 启动后自动修复 LuCI 固件版本显示问题
 # ============================================================
 
-CUSTOM_DATE=$(date +%Y.%m.%d)
-CUSTOM_VERSION="Mz.Wrt 24.10.3 (${CUSTOM_DATE}) by Mr.Zhang"
-CUSTOM_HOSTNAME="MzWrt-Router"
-LUCIBRANCH="LuCI openwrt-24.10 branch"
+CUSTOM_HOSTNAME="Mz.WRT"
+BUILD_DATE=$(date +%Y.%m)
+CUSTOM_VERSION="ImmortalWrt 24.10.4 by Mr.Zhang"
 
-echo "🧩 正在写入自定义系统信息..."
+echo "🧩 正在设置主机名与系统版本信息..."
 
-# ------------------ 主机名 ------------------
+# ------------------ 1️⃣ 设置主机名 ------------------
 uci set system.@system[0].hostname="${CUSTOM_HOSTNAME}"
 uci commit system
 echo "${CUSTOM_HOSTNAME}" > /proc/sys/kernel/hostname
 
-# ------------------ openwrt_release ------------------
+# ------------------ 2️⃣ 修改固件版本信息 ------------------
+# /etc/openwrt_release
 if [ -f /etc/openwrt_release ]; then
-    sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='${CUSTOM_VERSION} \/ ${LUCIBRANCH}'/" /etc/openwrt_release
+    sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='${CUSTOM_VERSION}'/" /etc/openwrt_release
 else
-    cat > /etc/openwrt_release <<EOF
-DISTRIB_ID='ImmortalWrt'
-DISTRIB_RELEASE='24.10.3'
-DISTRIB_REVISION='Mz.Wrt'
-DISTRIB_TARGET='custom/auto'
-DISTRIB_DESCRIPTION='${CUSTOM_VERSION} / ${LUCIBRANCH}'
-DISTRIB_TAINTS=''
-EOF
+    echo "DISTRIB_DESCRIPTION='${CUSTOM_VERSION}'" >> /etc/openwrt_release
 fi
 
-# ------------------ os-release ------------------
+# /etc/os-release
 if [ -f /etc/os-release ]; then
     sed -i "s/^PRETTY_NAME=.*/PRETTY_NAME=\"${CUSTOM_VERSION}\"/" /etc/os-release
 else
-    cat > /etc/os-release <<EOF
-NAME="ImmortalWrt"
-ID="immortalwrt"
-PRETTY_NAME="${CUSTOM_VERSION}"
-EOF
+    echo "PRETTY_NAME=\"${CUSTOM_VERSION}\"" >> /etc/os-release
 fi
 
-# ------------------ LuCI 显示修复 (已修正) ------------------
-# 强制重写 LuCI 的系统信息缓存，防止仍显示旧版本
-# 修正了判断条件：从 -d (目录) 修正为 -f (文件)
-[ -f /usr/lib/lua/luci/version.lua ] && rm -f /usr/lib/lua/luci/version.lua
-if [ -f /usr/lib/lua/luci/version.lua ]; then
-    # 注意：这个 sed 命令只对特定的 luic/version.lua 文件格式有效
-    sed -i "s/'LuCI .*'/'${CUSTOM_VERSION}'/" /usr/lib/lua/luci/version.lua 2>/dev/null
-fi
-
-# ------------------ SSH 欢迎语 ------------------
+# ------------------ 3️⃣ SSH 欢迎语 ------------------
 BANNER_FILE="/etc/banner"
-if [ -f "$BANNER_FILE" ]; then
-    cat >> "$BANNER_FILE" <<EOF
+{
+    echo ""
+    echo "============================================"
+    echo " 🧩 ${CUSTOM_VERSION}"
+    echo " 🖥️  Hostname: ${CUSTOM_HOSTNAME}"
+    echo " 📅 Build Date: ${BUILD_DATE}"
+    echo "============================================"
+} >> "$BANNER_FILE"
 
-============================================
- 🧩 ${CUSTOM_VERSION}
- 💡 ${LUCIBRANCH}
- 🖥️  Hostname: ${CUSTOM_HOSTNAME}
-============================================
-EOF
+# ------------------ 4️⃣ 防止版本信息被覆盖 ------------------
+RCLOCAL="/etc/rc.local"
+grep -q "Mr.Zhang" "$RCLOCAL" 2>/dev/null || cat >> "$RCLOCAL" <<EOF
+
+# 🧩 修复 LuCI 固件版本显示（防止系统覆盖）
+if [ -f /etc/openwrt_release ]; then
+    sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='${CUSTOM_VERSION}'/" /etc/openwrt_release
 fi
+if [ -f /etc/os-release ]; then
+    sed -i "s/^PRETTY_NAME=.*/PRETTY_NAME=\"${CUSTOM_VERSION}\"/" /etc/os-release
+fi
+EOF
 
-# ------------------ 标识文件 ------------------
-echo "${CUSTOM_VERSION}" > /etc/mz.version
-
-# ------------------ 清理 ------------------
+# ------------------ 清理自身 ------------------
 rm -f /etc/uci-defaults/99-custom.sh
 exit 0
