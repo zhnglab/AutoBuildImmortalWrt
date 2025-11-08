@@ -1,0 +1,64 @@
+#!/bin/sh
+# ============================================================
+# 🧩 ImmortalWrt 固件自定义信息脚本
+# 作者: Mr.Zhang
+# 功能:
+#  1️⃣ 设置主机名为 Mz.WRT
+#  2️⃣ LuCI 固件版本显示自定义内容
+#  3️⃣ SSH 欢迎语中显示版本信息与构建日期（到月）
+#  4️⃣ 启动后自动修复 LuCI 固件版本显示问题
+# ============================================================
+
+CUSTOM_HOSTNAME="Mz.WRT"
+BUILD_DATE=$(date +%Y.%m)
+CUSTOM_VERSION="ImmortalWrt 24.10.4 by Mr.Zhang"
+
+echo "🧩 正在设置主机名与系统版本信息..."
+
+# ------------------ 1️⃣ 设置主机名 ------------------
+uci set system.@system[0].hostname="${CUSTOM_HOSTNAME}"
+uci commit system
+echo "${CUSTOM_HOSTNAME}" > /proc/sys/kernel/hostname
+
+# ------------------ 2️⃣ 修改固件版本信息 ------------------
+# /etc/openwrt_release
+if [ -f /etc/openwrt_release ]; then
+    sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='${CUSTOM_VERSION}'/" /etc/openwrt_release
+else
+    echo "DISTRIB_DESCRIPTION='${CUSTOM_VERSION}'" >> /etc/openwrt_release
+fi
+
+# /etc/os-release
+if [ -f /etc/os-release ]; then
+    sed -i "s/^PRETTY_NAME=.*/PRETTY_NAME=\"${CUSTOM_VERSION}\"/" /etc/os-release
+else
+    echo "PRETTY_NAME=\"${CUSTOM_VERSION}\"" >> /etc/os-release
+fi
+
+# ------------------ 3️⃣ SSH 欢迎语 ------------------
+BANNER_FILE="/etc/banner"
+{
+    echo ""
+    echo "============================================"
+    echo " 🧩 ${CUSTOM_VERSION}"
+    echo " 🖥️  Hostname: ${CUSTOM_HOSTNAME}"
+    echo " 📅 Build Date: ${BUILD_DATE}"
+    echo "============================================"
+} >> "$BANNER_FILE"
+
+# ------------------ 4️⃣ 防止版本信息被覆盖 ------------------
+RCLOCAL="/etc/rc.local"
+grep -q "Mr.Zhang" "$RCLOCAL" 2>/dev/null || cat >> "$RCLOCAL" <<EOF
+
+# 🧩 修复 LuCI 固件版本显示（防止系统覆盖）
+if [ -f /etc/openwrt_release ]; then
+    sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='${CUSTOM_VERSION}'/" /etc/openwrt_release
+fi
+if [ -f /etc/os-release ]; then
+    sed -i "s/^PRETTY_NAME=.*/PRETTY_NAME=\"${CUSTOM_VERSION}\"/" /etc/os-release
+fi
+EOF
+
+# ------------------ 清理自身 ------------------
+rm -f /etc/uci-defaults/99-custom.sh
+exit 0
