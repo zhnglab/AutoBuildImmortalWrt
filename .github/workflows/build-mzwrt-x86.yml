@@ -1,0 +1,134 @@
+name: Build MzWrt x86
+
+on:
+  workflow_dispatch:
+    inputs:
+      firmware_version:
+        description: "选择 ImmortalWrt 版本"
+        required: true
+        default: "24.10"
+        type: choice
+        options:
+          - '24.10'
+          - '25.12'
+      custom_router_ip:
+        description: "LAN 管理地址"
+        required: true
+        default: "192.168.100.1"
+      profile:
+        description: "固件根分区大小（MB）"
+        required: true
+        default: "1024"
+      include_docker:
+        description: "是否集成 Docker 管理"
+        required: true
+        default: "yes"
+        type: choice
+        options:
+          - "yes"
+          - "no"
+      enable_pppoe:
+        description: "是否预设 PPPoE"
+        required: true
+        default: "no"
+        type: choice
+        options:
+          - "yes"
+          - "no"
+      pppoe_account:
+        description: "宽带账号（启用 PPPoE 时填写）"
+        required: false
+      pppoe_password:
+        description: "宽带密码（启用 PPPoE 时填写）"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout latest upstream-based source
+        uses: actions/checkout@v6
+
+      - name: Resolve build version
+        id: version
+        shell: bash
+        run: |
+          case "${{ inputs.firmware_version }}" in
+            "24.10")
+              echo "image_version=24.10.4" >> "$GITHUB_OUTPUT"
+              echo "build_script=build24.sh" >> "$GITHUB_OUTPUT"
+              echo "config_file=imm.config" >> "$GITHUB_OUTPUT"
+              echo "packages_file=packages24.sh" >> "$GITHUB_OUTPUT"
+              echo "package_format=IPK / opkg" >> "$GITHUB_OUTPUT"
+              ;;
+            "25.12")
+              echo "image_version=25.12.0" >> "$GITHUB_OUTPUT"
+              echo "build_script=build25.sh" >> "$GITHUB_OUTPUT"
+              echo "config_file=imm25.config" >> "$GITHUB_OUTPUT"
+              echo "packages_file=packages25.sh" >> "$GITHUB_OUTPUT"
+              echo "package_format=APK / apk" >> "$GITHUB_OUTPUT"
+              ;;
+            *) exit 1 ;;
+          esac
+
+      - name: Validate and prepare MzWrt settings
+        shell: bash
+        run: |
+          if [[ "${{ inputs.enable_pppoe }}" == "yes" ]] && [[ -z "${{ inputs.pppoe_account }}" || -z "${{ inputs.pppoe_password }}" ]]; then
+            echo "PPPoE 已启用，但账号或密码为空。"
+            exit 1
+          fi
+          if ! [[ "${{ inputs.profile }}" =~ ^[0-9]+$ ]] || (( ${{ inputs.profile }} < 512 )); then
+            echo "固件大小必须是大于等于 512 的整数。"
+            exit 1
+          fi
+          mkdir -p mzwrt-x86/files/etc/config
+          cat > mzwrt-x86/files/etc/config/mzwrt-settings <<EOF
+          custom_router_ip=${{ inputs.custom_router_ip }}
+          enable_pppoe=${{ inputs.enable_pppoe }}
+          pppoe_account=${{ inputs.pppoe_account }}
+          pppoe_password=${{ inputs.pppoe_password }}
+          EOF
+          chmod +x "mzwrt-x86/${{ steps.version.outputs.build_script }}"
+
+      - name: Build MzWrt x86
+        shell: bash
+        run: |
+          docker run --rm -i \
+            --user root \
+            -v "${{ github.workspace }}/bin:/home/build/immortalwrt/bin" \
+            -v "${{ github.workspace }}/mzwrt-x86/files:/home/build/immortalwrt/files" \
+            -v "${{ github.workspace }}/x86-64/${{ steps.version.outputs.config_file }}:/home/build/immortalwrt/.config" \
+            -v "${{ github.workspace }}/shell:/home/build/immortalwrt/shell" \
+            -v "${{ github.workspace }}/mzwrt-x86/${{ steps.version.outputs.packages_file }}:/home/build/immortalwrt/mzwrt-packages.sh" \
+            -v "${{ github.workspace }}/mzwrt-x86/${{ steps.version.outputs.build_script }}:/home/build/immortalwrt/build.sh" \
+            -e PROFILE="${{ inputs.profile }}" \
+            -e INCLUDE_DOCKER="${{ inputs.include_docker }}" \
+            "immortalwrt/imagebuilder:x86-64-openwrt-${{ steps.version.outputs.image_version }}" \
+            /bin/bash /home/build/immortalwrt/build.sh
+
+      - name: Create release information
+        shell: bash
+        run: |
+          cat > router-info.md <<EOF
+          # MzWrt x86
+          - ImmortalWrt：${{ inputs.firmware_version }}
+          - 包管理器：${{ steps.version.outputs.package_format }}
+          - 后台地址：${{ inputs.custom_router_ip }}
+          - 用户名：root
+          - 默认密码：无
+          - 固件签名：MzWrt - Packaged by Mr.Zhang
+          - TurboACC：$([[ "${{ inputs.firmware_version }}" == "24.10" ]] && echo "已集成" || echo "25.12 APK 暂不支持")
+          EOF
+
+      - name: Publish firmware
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: MzWrt-x86-${{ inputs.firmware_version }}
+          name: MzWrt x86 ${{ inputs.firmware_version }}
+          body_path: router-info.md
+          files: bin/targets/x86/64/*squashfs-combined-efi.img.gz
+          token: ${{ secrets.GITHUB_TOKEN }}
