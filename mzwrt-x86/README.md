@@ -9,9 +9,7 @@
 
 ## 默认组件
 
-Argon、iStore、QuickStart、OpenClash、分区扩容、DiskMan、TTyd、文件管理、SFTP、Samba4；Docker 可在工作流中选择。
-
-为兼容存储空间较小的设备，本子项目不预装 PassWall、Xray、Sing-box 和 Hysteria。
+Argon、iStore、QuickStart、OpenClash、PassWall、Xray、Sing-box、Hysteria、分区扩容、DiskMan、TTyd、文件管理、SFTP、Samba4；Docker 可在工作流中选择。
 
 ## 品牌
 
