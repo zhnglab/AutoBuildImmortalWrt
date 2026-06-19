@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-source shell/custom-packages.sh
+source shell/apk-custom-packages.sh
+echo "TurboACC: ImmortalWrt 25.12 APK 仓库暂未提供兼容包，本次构建自动跳过。"
 
 mkdir -p /home/build/immortalwrt/files/etc/config
 cat <<EOF > /home/build/immortalwrt/files/etc/config/pppoe-settings
@@ -11,12 +12,12 @@ pppoe_password=${PPPOE_PASSWORD}
 EOF
 
 if [ -n "$CUSTOM_PACKAGES" ]; then
-  echo "同步 24.10 IPK 第三方软件包"
-  git clone --depth=1 https://github.com/wukongdaily/store.git /tmp/store-run-repo
+  echo "同步 25.12 APK 第三方软件包"
+  git clone --depth=1 https://github.com/wukongdaily/apk.git /tmp/store-apk-repo
   mkdir -p /home/build/immortalwrt/extra-packages
-  cp -r /tmp/store-run-repo/run/x86/* /home/build/immortalwrt/extra-packages/
-  sh shell/prepare-packages.sh
-  find /home/build/immortalwrt/packages -type f -name "*.ipk" -maxdepth 1 -print
+  cp -r /tmp/store-apk-repo/run/x86/* /home/build/immortalwrt/extra-packages/
+  sh shell/apk-prepare-packages.sh
+  find /home/build/immortalwrt/packages -type f -name "*.apk" -maxdepth 1 -print
 fi
 
 PACKAGES=""
@@ -29,7 +30,6 @@ PACKAGES="$PACKAGES luci-i18n-ttyd-zh-cn"
 PACKAGES="$PACKAGES luci-i18n-filemanager-zh-cn"
 PACKAGES="$PACKAGES openssh-sftp-server"
 PACKAGES="$PACKAGES luci-i18n-samba4-zh-cn"
-PACKAGES="$PACKAGES xray-core sing-box hysteria luci-i18n-passwall-zh-cn"
 PACKAGES="$PACKAGES luci-app-openclash"
 PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
 
@@ -47,9 +47,9 @@ wget -q https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download
 wget -q https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat \
   -O files/etc/openclash/GeoSite.dat
 OPENCLASH_URL=$(curl -fsSL https://api.github.com/repos/vernesong/OpenClash/releases/latest \
-  | grep "browser_download_url.*ipk" | head -n1 | cut -d '"' -f 4)
+  | grep "browser_download_url.*apk" | head -n1 | cut -d '"' -f 4)
 wget -q "$OPENCLASH_URL" -P /home/build/immortalwrt/packages/
 
-echo "MzWrt 24.10 packages: $PACKAGES"
+echo "MzWrt 25.12 packages: $PACKAGES"
 make image PROFILE="generic" PACKAGES="$PACKAGES" \
   FILES="/home/build/immortalwrt/files" ROOTFS_PARTSIZE="$PROFILE"
