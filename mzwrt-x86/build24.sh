@@ -13,8 +13,7 @@ PACKAGES="curl luci-theme-argon luci-app-argon-config luci-i18n-argon-config-zh-
 PACKAGES="$PACKAGES luci-i18n-package-manager-zh-cn luci-i18n-diskman-zh-cn"
 PACKAGES="$PACKAGES luci-i18n-firewall-zh-cn luci-i18n-ttyd-zh-cn"
 PACKAGES="$PACKAGES luci-i18n-filemanager-zh-cn openssh-sftp-server luci-i18n-samba4-zh-cn"
-PACKAGES="$PACKAGES xray-core sing-box hysteria luci-i18n-passwall-zh-cn luci-app-openclash"
-PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
+PACKAGES="$PACKAGES luci-app-openclash $CUSTOM_PACKAGES"
 [ "$INCLUDE_DOCKER" = "yes" ] && PACKAGES="$PACKAGES luci-i18n-dockerman-zh-cn"
 
 mkdir -p files/etc/openclash/core
