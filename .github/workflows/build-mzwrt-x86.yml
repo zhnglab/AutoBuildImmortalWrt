@@ -134,6 +134,7 @@ jobs:
             echo "没有找到 x86 EFI 固件。"
             exit 1
           fi
+          sudo chown -R "$(id -u):$(id -g)" bin/targets/x86/64
           for file in "${files[@]}"; do
             mv "$file" "$(dirname "$file")/MzWrt-${{ inputs.firmware_version }}-x86-64-squashfs-combined-efi.img.gz"
           done
