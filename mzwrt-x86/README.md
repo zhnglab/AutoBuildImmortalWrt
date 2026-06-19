@@ -1,8 +1,15 @@
-# MzWrt ARM 子项目
+# MzWrt x86 子项目
 
-此分支由 MzWrt x86 分支复制而来，保留相同的 MzWrt / Mr.Zhang 品牌、工作流设置和默认插件结构。
+这是在上游最新 ImmortalWrt-ImageBuilder 源码内新增的独立 x86-64 定制项目，不修改上游原有目录和工作流。
 
-为适配存储空间较小的 ARM 设备，本分支唯一的插件差异是移除 PassWall、Xray、Sing-box 和 Hysteria，保留 OpenClash。
+## 构建版本
+
+- ImmortalWrt 24.10：`opkg` / `.ipk`，默认包含 TurboACC。
+- ImmortalWrt 25.12：`apk` / `.apk`，当前没有兼容的 TurboACC APK，因此自动跳过。
+
+## 默认组件
+
+Argon、iStore、QuickStart、OpenClash、PassWall、Xray、Sing-box、Hysteria、分区扩容、DiskMan、TTyd、文件管理、SFTP、Samba4；Docker 可在工作流中选择。
 
 ## 品牌
 
