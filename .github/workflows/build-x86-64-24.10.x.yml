@@ -1,11 +1,11 @@
-name: Build 24.10.x x86-64
+name: Build MzWrt x86 24.10.x
 
 on:
   workflow_dispatch:
     inputs:
       luci_version:
-        description: "选择luci版本"
-        required: false
+        description: "选择 ImmortalWrt 24.10 版本"
+        required: true
         default: "24.10.6"
         type: choice
         options:
@@ -17,40 +17,34 @@ on:
           - 24.10.5
           - 24.10.6
       custom_router_ip:
-        description: "请设置路由器的管理地址(仅对多网口路由器有效) 格式:192.168.x.1 或 10.x.x.1"
+        description: "多网口设备的 LAN 管理地址；单网口设备自动使用 DHCP"
         required: true
-        default: "192.168.100.1"
+        default: "192.168.88.1"
       profile:
-        description: '请输入要编译固件大小 单位(MB)'
+        description: "固件根分区大小（MB）"
         required: true
-        default: '1024'
-      enable_store:
-        description: "集成 store 商店"
-        required: false
-        type: boolean
-        default: true
+        default: "1024"
       include_docker:
-        description: |
-          是否编译 Docker 插件
+        description: "是否集成 Docker"
         required: true
-        default: 'yes'
+        default: "yes"
         type: choice
         options:
-          - 'yes'
-          - 'no'
+          - "yes"
+          - "no"
       enable_pppoe:
-        description: "是否配置PPPoE拨号信息?"
+        description: "是否预设 PPPoE"
         required: true
-        default: 'no'
+        default: "no"
         type: choice
         options:
-        - 'yes'
-        - 'no'
+          - "yes"
+          - "no"
       pppoe_account:
-        description: "宽带账号 (若启用PPPoE)"
+        description: "宽带账号（启用 PPPoE 时填写）"
         required: false
       pppoe_password:
-        description: "宽带密码 (若启用PPPoE)"
+        description: "宽带密码（启用 PPPoE 时填写）"
         required: false
 
 permissions:
@@ -59,45 +53,28 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
-      - name: Checkout code
+      - name: Checkout x86 branch
         uses: actions/checkout@v6
 
-      - name: Set executable permissions
-        run: chmod +x ${{ github.workspace }}/x86-64/build24.sh
-
-      - name: Save Custom Router IP into OpenWrt files
+      - name: Validate and prepare settings
+        shell: bash
         run: |
-          mkdir -p "${{ github.workspace }}/custom"
-          echo "${{ github.event.inputs.custom_router_ip }}" > "${{ github.workspace }}/custom/custom_router_ip.txt"
-          echo "您设置的路由器管理地址是:${{ github.event.inputs.custom_router_ip }}"
-          # 后续步骤会将该文件映射到路由器/etc/config/custom_router_ip.txt 以便用于开机脚本99-custom.sh读取用户设置的ip
-      
-      - name: Validate PPPoE Inputs
-        run: |
-          if [[ "${{ inputs.enable_pppoe }}" == "yes" ]]; then
-            if [[ -z "${{ inputs.pppoe_account }}" || -z "${{ inputs.pppoe_password }}" ]]; then
-              echo "Error: PPPoE account and password must be provided when PPPoE is enabled!"
-              exit 1
-            fi
+          if [[ "${{ inputs.enable_pppoe }}" == "yes" ]] && [[ -z "${{ inputs.pppoe_account }}" || -z "${{ inputs.pppoe_password }}" ]]; then
+            echo "PPPoE 已启用，但账号或密码为空。"
+            exit 1
           fi
-      
-      - name: Enable Store integration
-        run: |
-          if [ "${{ github.event.inputs.enable_store }}" == "true" ]; then
-            echo 'CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-store"' >> shell/custom-packages.sh
-            echo "✅ 已追加 luci-app-store"
-          else
-            echo "❎ 未启用 luci-app-store"
+          if ! [[ "${{ inputs.profile }}" =~ ^[0-9]+$ ]] || (( ${{ inputs.profile }} < 512 )); then
+            echo "固件大小必须是大于等于 512 的整数。"
+            exit 1
           fi
+          chmod +x x86-64/build24.sh
+          mkdir -p custom
+          printf '%s\n' "${{ inputs.custom_router_ip }}" > custom/custom_router_ip.txt
 
-      - name: Build ImmortalWrt-x86-64-efi 24.10.x
+      - name: Build MzWrt x86 24.10
+        shell: bash
         run: |
-          profile="${{ github.event.inputs.profile }}"
-          include_docker="${{ github.event.inputs.include_docker }}"
-          luci_version="${{ github.event.inputs.luci_version }}"
-          echo "Building for profile: $profile"
           docker run --rm -i \
             --user root \
             -v "${{ github.workspace }}/bin:/home/build/immortalwrt/bin" \
@@ -106,41 +83,52 @@ jobs:
             -v "${{ github.workspace }}/x86-64/imm.config:/home/build/immortalwrt/.config" \
             -v "${{ github.workspace }}/shell:/home/build/immortalwrt/shell" \
             -v "${{ github.workspace }}/x86-64/build24.sh:/home/build/immortalwrt/build.sh" \
-            -e PROFILE=$profile \
-            -e INCLUDE_DOCKER=$include_docker \
-            -e ENABLE_PPPOE=${{ inputs.enable_pppoe }} \
-            -e PPPOE_ACCOUNT=${{ inputs.pppoe_account }} \
-            -e PPPOE_PASSWORD=${{ inputs.pppoe_password }} \
-          immortalwrt/imagebuilder:x86-64-openwrt-${luci_version} /bin/bash /home/build/immortalwrt/build.sh
-          
+            -e PROFILE="${{ inputs.profile }}" \
+            -e INCLUDE_DOCKER="${{ inputs.include_docker }}" \
+            -e ENABLE_PPPOE="${{ inputs.enable_pppoe }}" \
+            -e PPPOE_ACCOUNT="${{ inputs.pppoe_account }}" \
+            -e PPPOE_PASSWORD="${{ inputs.pppoe_password }}" \
+            "immortalwrt/imagebuilder:x86-64-openwrt-${{ inputs.luci_version }}" \
+            /bin/bash /home/build/immortalwrt/build.sh
 
-      - name: Create info
+      - name: Verify MzWrt packages
+        shell: bash
         run: |
-          cat > ${{ github.workspace }}/router-info.md <<EOF
-          ## 📡 路由器后台信息
-          <a href="https://wkdaily.cpolar.cn/archives/1">
-           <img src="https://img.shields.io/badge/若下载慢可套用国内加速站下载-FC7C0D?logo=github&logoColor=fff&labelColor=000&style=for-the-badge"/>
-          </a>
-          
-          - 🏠 **后台地址**: ${{ github.event.inputs.custom_router_ip }}
-          - 👤 **用户名**: root
-          - 🔑 **密码**: 无
+          manifest=$(find bin/targets/x86/64 -type f -name '*.manifest' | head -n1)
+          test -n "$manifest" || { echo "没有生成 manifest"; exit 1; }
+          for package in luci-app-store luci-app-openclash luci-app-passwall luci-app-turboacc luci-app-partexp luci-theme-argon; do
+            grep -E "^${package}([[:space:]]|$)" "$manifest" || { echo "固件缺少 ${package}"; exit 1; }
+          done
+
+      - name: Rename firmware as MzWrt
+        shell: bash
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" bin/targets/x86/64
+          source_file=$(find bin/targets/x86/64 -maxdepth 1 -type f -name '*squashfs-combined-efi.img.gz' | head -n1)
+          test -n "$source_file" || { echo "没有找到 x86 EFI 固件"; exit 1; }
+          target="bin/targets/x86/64/MzWrt-${{ inputs.luci_version }}-x86-64-squashfs-combined-efi.img.gz"
+          mv "$source_file" "$target"
+
+      - name: Create release information
+        shell: bash
+        run: |
+          cat > router-info.md <<EOF
+          # MzWrt x86 ${{ inputs.luci_version }} by Mr.Zhang
+          - 包管理器：IPK / opkg
+          - 多网口后台地址：${{ inputs.custom_router_ip }}
+          - 单网口模式：DHCP 客户端
+          - 用户名：root
+          - 默认密码：无
+          - SSH 标识：MzWrt by Mr.Zhang
+          - LuCI 固件签名：ImmortalWrt ${{ inputs.luci_version }} By Mr.Zhang
+          - 默认插件：iStore、OpenClash、PassWall、TurboACC、Argon、分区扩容
           EOF
 
-          if [ "${{ github.event.inputs.include_docker }}" == "yes" ]; then
-            extra_content="#### 默认带docker"
-            echo -e "\n$extra_content" >> ${{ github.workspace }}/router-info.md
-          else
-            echo -e "\n#### 不带docker" >> ${{ github.workspace }}/router-info.md
-          fi
-
-      - name: Upload ImmortWrt as release assets
+      - name: Publish MzWrt firmware
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: Autobuild-x86-64
-          body_path: ${{ github.workspace }}/router-info.md
-          files: |
-            ${{ github.workspace }}/bin/targets/x86/64/*squashfs-combined-efi.img.gz
+          tag_name: MzWrt-x86-${{ inputs.luci_version }}
+          name: MzWrt x86 ${{ inputs.luci_version }} by Mr.Zhang
+          body_path: router-info.md
+          files: bin/targets/x86/64/MzWrt-*.img.gz
           token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
