@@ -14,7 +14,7 @@ on:
       custom_router_ip:
         description: "LAN 管理地址"
         required: true
-        default: "192.168.100.1"
+        default: "192.168.88.1"
       profile:
         description: "固件根分区大小（MB）"
         required: true
@@ -120,7 +120,7 @@ jobs:
           - 后台地址：${{ inputs.custom_router_ip }}
           - 用户名：root
           - 默认密码：无
-          - 固件签名：MzWrt - Packaged by Mr.Zhang
+          - 固件签名：ImmortalWrt ${{ steps.version.outputs.image_version }} By Mr.Zhang
           - TurboACC：$([[ "${{ inputs.firmware_version }}" == "24.10" ]] && echo "已集成" || echo "25.12 APK 暂不支持")
           EOF
 
