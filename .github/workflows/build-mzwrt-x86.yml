@@ -14,7 +14,7 @@ on:
       custom_router_ip:
         description: "LAN 管理地址"
         required: true
-        default: "192.168.100.1"
+        default: "192.168.88.1"
       profile:
         description: "固件根分区大小（MB）"
         required: true
@@ -94,7 +94,7 @@ jobs:
           EOF
           chmod +x "mzwrt-x86/${{ steps.version.outputs.build_script }}"
           test -f mzwrt-x86/files/etc/banner
-          grep -q 'MzWrt - Packaged by Mr.Zhang' mzwrt-x86/files/etc/uci-defaults/99-mzwrt.sh
+          grep -q 'By Mr.Zhang' mzwrt-x86/files/etc/uci-defaults/99-mzwrt.sh
 
       - name: Build MzWrt x86
         shell: bash
@@ -150,7 +150,7 @@ jobs:
           - 用户名：root
           - 默认密码：无
           - SSH 标识：MzWrt by Mr.Zhang
-          - LuCI 固件签名：MzWrt - Packaged by Mr.Zhang
+          - LuCI 固件签名：ImmortalWrt ${{ steps.version.outputs.image_version }} By Mr.Zhang
           - OpenClash：已验证写入固件
           - PassWall：已验证写入固件
           - TurboACC：$([[ "${{ inputs.firmware_version }}" == "24.10" ]] && echo "已集成" || echo "25.12 APK 暂不支持")
