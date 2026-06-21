@@ -112,4 +112,14 @@ if [ -f "$OS_RELEASE" ]; then
     fi
 fi
 
+cat > /etc/banner <<'EOF'
+ __  __      __        __     _
+|  \/  | ____\ \      / /_ __| |_
+| |\/| ||_  / \ \ /\ / /| '__| __|
+| |  | | / /   \ V  V / | |  | |_
+|_|  |_|/___|   \_/\_/  |_|   \__|
+
+         MzWrt ARM by Mr.Zhang
+EOF
+
 exit 0
